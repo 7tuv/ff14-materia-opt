@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# coding=utf-8
+
 from pyscipopt import Model, quicksum
 from math import floor
 
@@ -5,8 +8,8 @@ class MateriaOpt:
 
 	data = {}
 
-	def __init__(self, data):
-		self.data = data
+	def __init__(self, dataset):
+		self.data = self.translate_data(dataset)
 
 		# ダメージソースの割合。ジョブや状況によって変動。
 		self.rate_aa = 0.125	# aaのダメージソースの割合
@@ -15,6 +18,30 @@ class MateriaOpt:
 
 		self.ss_lower = 0
 		self.pi_lower = 0
+
+	def translate_data(self, dataset):
+		data = {}
+
+		for eq in dataset:
+
+			b = all([ len(i)==len(['vt', 'vt_lim', 'dh', 'ch', 'dt', 'ss', 'tn', 'pi', 'subst_lm', 'ex_m', 'mg_m']) for i in dataset[eq]])
+			if b is False:
+				raise ValuError("与えられたtupleのサイズが想定と異なります。")
+
+			tmp = {}
+			# tmp["vt"] = [ (v[0], v[1]) for v in dataset[eq] ]
+			tmp["dh"] = [ (v[2], v[8]) for v in dataset[eq] ]
+			tmp["ch"] = [ (v[3], v[8]) for v in dataset[eq] ]
+			tmp["dt"] = [ (v[4], v[8]) for v in dataset[eq] ]
+			tmp["ss"] = [ (v[5], v[8]) for v in dataset[eq] ]
+			tmp["tn"] = [ (v[6], v[8]) for v in dataset[eq] ]
+			tmp["pi"] = [ (v[7], v[8]) for v in dataset[eq] ]
+			tmp["ex_m"] = dataset[eq][0][9]		# 同じ部位で複数の装備が与えられたとき、今の実装だと0番目の装備の
+			tmp["mg_m"] = dataset[eq][0][10]	# 空きパターンにしか対応していないので注意すること。
+			data[eq] = tmp
+			# print(tmp)
+		return data
+
 
 	def set_rate_dmgsrc(self, aa, dot, ss):
 
