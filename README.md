@@ -11,6 +11,21 @@
 * SCIP 6.0.2
 * PySCIPOpt 2.3.3
 
+## Docker環境用
+[Dockerfile](/Dockerfile)を作成しました。
+
+以下個人的メモ。
+
+* Dockerfileからイメージ作成
+```
+docker build -t test_image .
+# Dockerfileと同じ階層に scipoptsuite-X.X.X.tgz を置くこと。
+```
+
+* イメージからコンテナ起動
+```
+docker run --name test_container -it test_image bash
+```
 
 # SCIP導入方法
 
