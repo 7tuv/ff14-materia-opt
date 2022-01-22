@@ -13,6 +13,7 @@
 
 ## Docker環境用
 [Dockerfile](/Dockerfile)を作成しました。
+コンテナを利用できる環境があれば、ff14-materia-optに必要なモジュールを自動的に準備できます。
 
 以下個人的メモ。
 
