@@ -7,6 +7,7 @@ from math import floor
 class MateriaOpt:
 
 	data = {}
+	meshi = {}
 
 	def __init__(self, dataset):
 		self.data = self.translate_data(dataset)
@@ -18,6 +19,9 @@ class MateriaOpt:
 
 		self.ss_lower = 0
 		self.pi_lower = 0
+
+		for i in ["dh", "ch", "dt", "ss", "tn", "pi"]:
+			self.meshi[i] = 0
 
 	def translate_data(self, dataset):
 		data = {}
@@ -58,6 +62,14 @@ class MateriaOpt:
 
 	def set_pi_condition(self, pi):
 		self.pi_lower = pi
+
+	def set_meshi(self, dh=0, ch=0, dt=0, ss=0, tn=0, pi=0):
+		self.meshi["dh"] = dh
+		self.meshi["ch"] = ch
+		self.meshi["dt"] = dt
+		self.meshi["ss"] = ss
+		self.meshi["tn"] = tn
+		self.meshi["pi"] = pi
 
 	def calc_damage(self):
 		data = self.data
@@ -177,12 +189,12 @@ class MateriaOpt:
 			tn[eq] = self.expr_min(tmp_tn, data[eq]["tn"][0][1])
 			pi[eq] = self.expr_min(tmp_pi, data[eq]["pi"][0][1])
 
-		dh_sum = quicksum(dh[eq] for eq in data)
-		ch_sum = quicksum(ch[eq] for eq in data)
-		dt_sum = quicksum(dt[eq] for eq in data)
-		ss_sum = quicksum(ss[eq] for eq in data)
-		tn_sum = quicksum(tn[eq] for eq in data)
-		pi_sum = quicksum(pi[eq] for eq in data)
+		dh_sum = quicksum(dh[eq] for eq in data) + self.meshi["dh"]
+		ch_sum = quicksum(ch[eq] for eq in data) + self.meshi["ch"]
+		dt_sum = quicksum(dt[eq] for eq in data) + self.meshi["dt"]
+		ss_sum = quicksum(ss[eq] for eq in data) + self.meshi["ss"]
+		tn_sum = quicksum(tn[eq] for eq in data) + self.meshi["tn"]
+		pi_sum = quicksum(pi[eq] for eq in data) + self.meshi["pi"]
 
 
 		#### damage efficiency in each substatuses ####
@@ -261,14 +273,14 @@ class MateriaOpt:
 		subst_materia_pi = sum([result[eq]["pi"][0] for eq in result]) - equip_pi
 		subst_materia = subst_materia_dh + subst_materia_ch + subst_materia_dt + subst_materia_ss + subst_materia_tn + subst_materia_pi
 
-		fdh_sol = self.lmd_fdh(equip_dh + subst_materia_dh)
-		fch_sol = self.lmd_fch(equip_ch + subst_materia_ch)
-		fdt_sol = self.lmd_fdt(equip_dt + subst_materia_dt)
-		fss_sol = self.lmd_fss(equip_ss + subst_materia_ss)
-		fss_dot_aa_sol = self.lmd_fss_dot_aa(equip_ss + subst_materia_ss)
-		fss_gdc_sol = self.lmd_fss_gdc(equip_ss + subst_materia_ss)
-		ftn_sol = self.lmd_ftn(equip_tn + subst_materia_tn)
-		fpi_sol = self.lmd_fpi(equip_pi + subst_materia_pi)
+		fdh_sol = self.lmd_fdh(equip_dh + subst_materia_dh + self.meshi["dh"])
+		fch_sol = self.lmd_fch(equip_ch + subst_materia_ch + self.meshi["ch"])
+		fdt_sol = self.lmd_fdt(equip_dt + subst_materia_dt + self.meshi["dt"])
+		fss_sol = self.lmd_fss(equip_ss + subst_materia_ss + self.meshi["ss"])
+		fss_dot_aa_sol = self.lmd_fss_dot_aa(equip_ss + subst_materia_ss + self.meshi["ss"])
+		fss_gdc_sol = self.lmd_fss_gdc(equip_ss + subst_materia_ss + self.meshi["ss"])
+		ftn_sol = self.lmd_ftn(equip_tn + subst_materia_tn + self.meshi["tn"])
+		fpi_sol = self.lmd_fpi(equip_pi + subst_materia_pi + self.meshi["pi"])
 
 		print(sol)
 		print("Optimal value:", model.getObjVal())
@@ -311,13 +323,17 @@ class MateriaOpt:
 		print("サブステ ﾏﾃﾘｱ	: {0:4.0f}".format(subst_materia))
 		print("サブステ 総数	: {0:4.0f}".format(subst_init + subst_materia))
 		print("")
-		print("                       Equip  Materia")
-		print("dh(ﾀﾞｲﾚｸﾄﾋｯﾄ)	: {0:4.0f} ({1:4.0f} +  {2:4.0f})".format(equip_dh + subst_materia_dh, equip_dh, subst_materia_dh))
-		print("ch(ｸﾘﾃｨｶﾙﾋｯﾄ)	: {0:4.0f} ({1:4.0f} +  {2:4.0f})".format(equip_ch + subst_materia_ch, equip_ch, subst_materia_ch))
-		print("dt(意思力)	: {0:4.0f} ({1:4.0f} +  {2:4.0f})".format(equip_dt + subst_materia_dt, equip_dt, subst_materia_dt))
-		print("ss(ｽｷﾙｽﾋﾟｰﾄﾞ)	: {0:4.0f} ({1:4.0f} +  {2:4.0f})".format(equip_ss + subst_materia_ss, equip_ss, subst_materia_ss))
-		print("tn(不屈)	: {0:4.0f} ({1:4.0f} +  {2:4.0f})".format(equip_tn + subst_materia_tn, equip_tn, subst_materia_tn))
-		print("pi(信仰)	: {0:4.0f} ({1:4.0f} +  {2:4.0f})".format(equip_pi + subst_materia_pi, equip_pi, subst_materia_pi))
+		print("                       Equip  Materia  Meshi")
+		print("dh(ﾀﾞｲﾚｸﾄﾋｯﾄ)	: {0:4.0f} ({1:4.0f} +  {2:4.0f}  + {3:4.0f})".format(equip_dh + subst_materia_dh + self.meshi["dh"], equip_dh, subst_materia_dh, self.meshi["dh"]))
+		print("ch(ｸﾘﾃｨｶﾙﾋｯﾄ)	: {0:4.0f} ({1:4.0f} +  {2:4.0f}  + {3:4.0f})".format(equip_ch + subst_materia_ch + self.meshi["ch"], equip_ch, subst_materia_ch, self.meshi["ch"]))
+		print("dt(意思力)	: {0:4.0f} ({1:4.0f} +  {2:4.0f}  + {3:4.0f})".format(equip_dt + subst_materia_dt + self.meshi["dt"], equip_dt, subst_materia_dt, self.meshi["dt"]))
+		print("ss(ｽｷﾙｽﾋﾟｰﾄﾞ)	: {0:4.0f} ({1:4.0f} +  {2:4.0f}  + {3:4.0f})".format(equip_ss + subst_materia_ss + self.meshi["ss"], equip_ss, subst_materia_ss, self.meshi["ss"]))
+		print("tn(不屈)	: {0:4.0f} ({1:4.0f} +  {2:4.0f}  + {3:4.0f})".format(equip_tn + subst_materia_tn + self.meshi["tn"], equip_tn, subst_materia_tn, self.meshi["tn"]))
+		print("pi(信仰)	: {0:4.0f} ({1:4.0f} +  {2:4.0f}  + {3:4.0f})".format(equip_pi + subst_materia_pi + self.meshi["pi"], equip_pi, subst_materia_pi, self.meshi["pi"]))
+		print("")
+		print("rate_aa  : {0}".format(self.rate_aa))
+		print("rate_dot : {0}".format(self.rate_dot))
+		print("rate_ss  : {0}".format(self.rate_ss))
 		print("")
 		self.show_eff(fdh_sol, fch_sol, fdt_sol, fss_sol, fss_gdc_sol, fss_dot_aa_sol, ftn_sol, fpi_sol)
 
@@ -332,12 +348,12 @@ class MateriaOpt:
 		# print(model.getVal(fdh))
 
 		print("******** 厳密解 ********")
-		rtn = self.calc_exact_dmg_multiplier(equip_dh + subst_materia_dh,
-											equip_ch + subst_materia_ch,
-											equip_dt + subst_materia_dt,
-											equip_ss + subst_materia_ss,
-											equip_tn + subst_materia_tn,
-											equip_pi + subst_materia_pi)
+		rtn = self.calc_exact_dmg_multiplier(equip_dh + subst_materia_dh + self.meshi["dh"],
+											equip_ch + subst_materia_ch + self.meshi["ch"],
+											equip_dt + subst_materia_dt + self.meshi["dt"],
+											equip_ss + subst_materia_ss + self.meshi["ss"],
+											equip_tn + subst_materia_tn + self.meshi["tn"],
+											equip_pi + subst_materia_pi + self.meshi["pi"])
 		self.show_eff(*rtn)
 
 

@@ -102,6 +102,12 @@ if __name__ == "__main__":
 	# obj.set_pi_condition(462)	# 制約条件: 信仰が少なくとも 0 以上
 	# obj.set_pi_condition(1000)	# 制約条件: 信仰が少なくとも 0 以上
 
+	#### 飯を含めたうえでの最適値を計算 ####
+	obj.set_meshi(ch=108, dt=179)	# 5.4スモークチキンHQ
+	# obj.set_meshi(ch=179, ss=108)	# 5.4チキンフェットゥチーネHQ
+	# obj.set_meshi(dt=108, dh=179)	# 5.4ピッツァHQ
+	# obj.set_meshi(ch=101, dt=168)	# 5.2 高地風挽肉のキャベツ巻きHQ
+
 
 	#### 最適化問題を解く ####
 	obj.calc_damage()
