@@ -17,14 +17,14 @@ def get_selected_dataset(dataset, choice_eq):
 
 if __name__ == "__main__":
 
-	# choice_eq = [0, 1, 0, 1, 1, 0, 1,
-	# 			0, 0, 0, 0, 0]
-
-	# dataset = get_dataset_brd_il510()
-	dataset = get_dataset_brd_il530()
+	dataset = get_dataset_brd_il600()
+	# dataset = get_dataset_brd_il530()
 	# dataset = get_dataset_whm_il530()
+	# dataset = get_dataset_brd_il510()
 
-	dataset = get_selected_dataset(dataset, choice_eq)
+	# choice_eq = [0, 1, 0, 0, 0, 1, 1,	#  6.0
+	#			0, 1, 1, 0, 0]			#  brd最適装備(計算) https://etro.gg/gearset/865fc886-994f-4c28-8fc1-4379f160a916
+	# dataset = get_selected_dataset(dataset, choice_eq)
 
 	### 準備 ###
 	obj = MateriaOpt(dataset)
@@ -44,15 +44,20 @@ if __name__ == "__main__":
 	# obj.set_ss_condition(1143)	# 制約条件: GCDが少なくとも 2.39 以下
 	# obj.set_ss_condition(1244)	# 制約条件: GCDが少なくとも 2.38 以下
 
-	#### 信仰 条件 #### 作成中
+	#### 信仰 条件 ####
 	# obj.set_pi_condition(462)	# 制約条件: 信仰が少なくとも X 以上
 	# obj.set_pi_condition(1000)	# 制約条件: 信仰が少なくとも X 以上
 
 	#### 飯を含めたうえでの最適値を計算 ####
-	obj.set_meshi(ch=108, dt=179)	# 5.4スモークチキンHQ
+	obj.set_meshi(ch=90, ss=54)	# 6.0パンプキンラタトゥイユHQ◎
+	# obj.set_meshi(ch=54, dt=90)	# 6.0パンプキンポタージュHQ
+	# obj.set_meshi(ch=108, dt=179)	# 5.4スモークチキンHQ
 	# obj.set_meshi(ch=179, ss=108)	# 5.4チキンフェットゥチーネHQ
 	# obj.set_meshi(dt=108, dh=179)	# 5.4ピッツァHQ
 	# obj.set_meshi(ch=101, dt=168)	# 5.2 高地風挽肉のキャベツ巻きHQ
+
+	obj.set_calcset(version="6.0")
+	# obj.set_calcset(version="5.5")
 
 	#### 最適化問題を解く ####
 	obj.calc_damage()

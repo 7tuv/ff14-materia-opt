@@ -71,34 +71,66 @@ class MateriaOpt:
 		self.meshi["tn"] = tn
 		self.meshi["pi"] = pi
 
-	def calc_damage(self):
-		data = self.data
-
+	def set_calcset(self, version="6.0"):
 		# 各サブステ x とダメージ倍率 f(x) の関係式を2次関数で近似。パラメータa,b,cは要調整。
 		# 係数: 	# f(x) = ax^2 + bx + c
 		# scipを使う関係上、連続な関数を使用せざるを得ない。下記参照リンクの計算式の床関数もガン無視。なので多少誤差が出る（コンマ％くらい？）。
 		# reference: http://allaganstudies.akhmorning.com/guide/damage/
-		self.lmd_fdh = lambda x: 4.1667e-5*x + 1
 
-		self.lmd_fch = lambda x: (3.6732e-9*x + 2.7271e-5)*x + 0.02 + 1
-		
-		self.lmd_fdt = lambda x: 3.9394e-05 * x + 1
-		
+		if version == "6.0" :
+			print("calcset: 6.0")
+			##############
+			# after 6.0  #
+			##############
+			self.lmd_fdh = lambda x: 7.24e-5*x + 1
 
-		self.lmd_fss_gdc = lambda x: (2.13073e-9*x + 3.81069e-5)*x + 1
-		self.lmd_fss_dot_aa = lambda x: 3.9394e-05 * x + 1
+			self.lmd_fch = lambda x: (1.11e-8*x + 4.73e-5)*x + 0.02 + 1
+			
+			self.lmd_fdt = lambda x: 7.37e-05 * x + 1
 
-		self.lmd_fss =  lambda x: self.rate_ss * self.lmd_fss_gdc(x) \
-								+ (self.rate_aa+self.rate_dot) * self.lmd_fss_dot_aa(x) \
-								+ (1-(self.rate_ss+self.rate_aa+self.rate_dot)) * 1
+			self.lmd_fss_gdc = lambda x: (2.63e-9*x + 2.65e-5)*x + 1
+			self.lmd_fss_dot_aa = lambda x: 7.37e-05 * x + 1
 
-		self.lmd_ftn = lambda x: 3.0303e-5*x + 1
+			self.lmd_fss =  lambda x: self.rate_ss * self.lmd_fss_gdc(x) \
+									+ (self.rate_aa+self.rate_dot) * self.lmd_fss_dot_aa(x) \
+									+ (1-(self.rate_ss+self.rate_aa+self.rate_dot)) * 1
+
+			self.lmd_ftn = lambda x: 5.26e-5*x + 1
+
+			self.materia01 = 36		# アルテマ
+			self.materia02 = 12		# オメガ
+
+		else:
+			print("calcset: 5.x")
+			##############
+			# before 5.5 #
+			##############
+			self.lmd_fdh = lambda x: 4.1667e-5*x + 1
+
+			self.lmd_fch = lambda x: (3.6732e-9*x + 2.7271e-5)*x + 0.02 + 1
+			
+			self.lmd_fdt = lambda x: 3.9394e-05 * x + 1
+			
+			self.lmd_fss_gdc = lambda x: (2.13073e-9*x + 3.81069e-5)*x + 1
+			self.lmd_fss_dot_aa = lambda x: 3.9394e-05 * x + 1
+
+			self.lmd_fss =  lambda x: self.rate_ss * self.lmd_fss_gdc(x) \
+									+ (self.rate_aa+self.rate_dot) * self.lmd_fss_dot_aa(x) \
+									+ (1-(self.rate_ss+self.rate_aa+self.rate_dot)) * 1
+
+			self.lmd_ftn = lambda x: 3.0303e-5*x + 1
+
+			self.materia01 = 60		# エクス
+			self.materia02 = 20		# メガ
 
 		self.lmd_fpi = lambda x: 1	# 信仰値はダメージ倍率に影響なし
 
 		self.expr_min = lambda x,y: (x+y)/2 - abs(x-y)/2	# min関数をscipが読める形に置き換える。
 															# サブステの装備内での上限値を考慮するために必要。
 
+
+	def calc_damage(self):
+		data = self.data
 
 		model = Model("calc_damage_multiplier")
 		objvar = model.addVar("objvar", lb=1.0, ub=None, vtype= "C")
@@ -154,7 +186,7 @@ class MateriaOpt:
 			_is_chosen[eq] = []
 			if len(data[eq]["dh"]) == 1:
 				_is_chosen[eq].append(model.addVar(name=eq+"_0", vtype="B", lb=0, ub=1))
-				model.addCons(_is_chosen[eq][0] <= 1)
+				model.addCons(_is_chosen[eq][0] == 1)	# 選択すべき装備が1個の場合は 1 で決め打ち
 			else:
 				_is_chosen[eq].append(model.addVar(name=eq+"_0", vtype="B", lb=0, ub=1))	# 要修正。3以上の時。
 				_is_chosen[eq].append(model.addVar(name=eq+"_1", vtype="B", lb=0, ub=1))
@@ -168,17 +200,17 @@ class MateriaOpt:
 			# tmp_ss = 60*ex_m_ss[eq] + 20*mg_m_ss[eq] + data[eq]["ss"][0]
 
 			########
-			tmp_dh = 60*ex_m_dh[eq] + 20*mg_m_dh[eq] \
+			tmp_dh = self.materia01*ex_m_dh[eq] + self.materia02*mg_m_dh[eq] \
 					+ quicksum( data[eq]["dh"][i][0]*_is_chosen[eq][i] for i in range(len(_is_chosen[eq])) )	
-			tmp_ch = 60*ex_m_ch[eq] + 20*mg_m_ch[eq] \
+			tmp_ch = self.materia01*ex_m_ch[eq] + self.materia02*mg_m_ch[eq] \
 					+ quicksum( data[eq]["ch"][i][0]*_is_chosen[eq][i] for i in range(len(_is_chosen[eq])) )
-			tmp_dt = 60*ex_m_dt[eq] + 20*mg_m_dt[eq] \
+			tmp_dt = self.materia01*ex_m_dt[eq] + self.materia02*mg_m_dt[eq] \
 					+ quicksum( data[eq]["dt"][i][0]*_is_chosen[eq][i] for i in range(len(_is_chosen[eq])) )
-			tmp_ss = 60*ex_m_ss[eq] + 20*mg_m_ss[eq] \
+			tmp_ss = self.materia01*ex_m_ss[eq] + self.materia02*mg_m_ss[eq] \
 					+ quicksum( data[eq]["ss"][i][0]*_is_chosen[eq][i] for i in range(len(_is_chosen[eq])) )
-			tmp_tn = 60*ex_m_tn[eq] + 20*mg_m_tn[eq] \
+			tmp_tn = self.materia01*ex_m_tn[eq] + self.materia02*mg_m_tn[eq] \
 					+ quicksum( data[eq]["tn"][i][0]*_is_chosen[eq][i] for i in range(len(_is_chosen[eq])) )
-			tmp_pi = 60*ex_m_pi[eq] + 20*mg_m_pi[eq] \
+			tmp_pi = self.materia01*ex_m_pi[eq] + self.materia02*mg_m_pi[eq] \
 					+ quicksum( data[eq]["pi"][i][0]*_is_chosen[eq][i] for i in range(len(_is_chosen[eq])) )
 
 			# マテリアにより上昇するサブステが、サブステ上限値を超えないようにする
@@ -227,31 +259,32 @@ class MateriaOpt:
 		for eq in data:
 			########
 			print(_is_chosen[eq])
+
 			num_eq[eq] = [ round(model.getVal(v)) for v in _is_chosen[eq] ].index(1)
 			########
 			result[eq] = {}
 			result[eq]["dh"] = (
-				min(60*round(model.getVal(ex_m_dh[eq])) + 20*round(model.getVal(mg_m_dh[eq])) + data[eq]["dh"][num_eq[eq]][0], data[eq]["dh"][num_eq[eq]][1]),
+				min(self.materia01*round(model.getVal(ex_m_dh[eq])) + self.materia02*round(model.getVal(mg_m_dh[eq])) + data[eq]["dh"][num_eq[eq]][0], data[eq]["dh"][num_eq[eq]][1]),
 				data[eq]["dh"][num_eq[eq]][1],
 				)
 			result[eq]["ch"] = (
-				min(60*round(model.getVal(ex_m_ch[eq])) + 20*round(model.getVal(mg_m_ch[eq])) + data[eq]["ch"][num_eq[eq]][0], data[eq]["ch"][num_eq[eq]][1]),
+				min(self.materia01*round(model.getVal(ex_m_ch[eq])) + self.materia02*round(model.getVal(mg_m_ch[eq])) + data[eq]["ch"][num_eq[eq]][0], data[eq]["ch"][num_eq[eq]][1]),
 				data[eq]["ch"][num_eq[eq]][1],
 				)
 			result[eq]["dt"] = (
-				min(60*round(model.getVal(ex_m_dt[eq])) + 20*round(model.getVal(mg_m_dt[eq])) + data[eq]["dt"][num_eq[eq]][0], data[eq]["dt"][num_eq[eq]][1]),
+				min(self.materia01*round(model.getVal(ex_m_dt[eq])) + self.materia02*round(model.getVal(mg_m_dt[eq])) + data[eq]["dt"][num_eq[eq]][0], data[eq]["dt"][num_eq[eq]][1]),
 				data[eq]["dt"][num_eq[eq]][1],
 				)
 			result[eq]["ss"] = (
-				min(60*round(model.getVal(ex_m_ss[eq])) + 20*round(model.getVal(mg_m_ss[eq])) + data[eq]["ss"][num_eq[eq]][0], data[eq]["ss"][num_eq[eq]][1]),
+				min(self.materia01*round(model.getVal(ex_m_ss[eq])) + self.materia02*round(model.getVal(mg_m_ss[eq])) + data[eq]["ss"][num_eq[eq]][0], data[eq]["ss"][num_eq[eq]][1]),
 				data[eq]["ss"][num_eq[eq]][1],
 				)
 			result[eq]["tn"] = (
-				min(60*round(model.getVal(ex_m_tn[eq])) + 20*round(model.getVal(mg_m_tn[eq])) + data[eq]["tn"][num_eq[eq]][0], data[eq]["tn"][num_eq[eq]][1]),
+				min(self.materia01*round(model.getVal(ex_m_tn[eq])) + self.materia02*round(model.getVal(mg_m_tn[eq])) + data[eq]["tn"][num_eq[eq]][0], data[eq]["tn"][num_eq[eq]][1]),
 				data[eq]["tn"][num_eq[eq]][1],
 				)
 			result[eq]["pi"] = (
-				min(60*round(model.getVal(ex_m_pi[eq])) + 20*round(model.getVal(mg_m_pi[eq])) + data[eq]["pi"][num_eq[eq]][0], data[eq]["pi"][num_eq[eq]][1]),
+				min(self.materia01*round(model.getVal(ex_m_pi[eq])) + self.materia02*round(model.getVal(mg_m_pi[eq])) + data[eq]["pi"][num_eq[eq]][0], data[eq]["pi"][num_eq[eq]][1]),
 				data[eq]["pi"][num_eq[eq]][1],
 				)
 
@@ -353,37 +386,62 @@ class MateriaOpt:
 											equip_dt + subst_materia_dt + self.meshi["dt"],
 											equip_ss + subst_materia_ss + self.meshi["ss"],
 											equip_tn + subst_materia_tn + self.meshi["tn"],
-											equip_pi + subst_materia_pi + self.meshi["pi"])
+											equip_pi + subst_materia_pi + self.meshi["pi"],
+											"6.0")
 		self.show_eff(*rtn)
 
 
 		# tmp = sum([60*data[eq]["ex_m"] + 20*data[eq]["mg_m"] for eq in data])
 		# self.kenzan(tmp, equip_dh, equip_ch, equip_dt, equip_ss, equip_tn, equip_pi)
 
-	def calc_exact_dmg_multiplier(self, subst_dh, subst_ch, subst_dt, subst_ss, subst_tn, subst_pi):
+	def calc_exact_dmg_multiplier(self, subst_dh, subst_ch, subst_dt, subst_ss, subst_tn, subst_pi, version="6.0"):
 		# reference: http://allaganstudies.akhmorning.com/guide/damage/
-		lmd_exact_fdh_prob = lambda x: floor(550/3300*x) / 1000
-		lmd_exact_fdh = lambda x: lmd_exact_fdh_prob(x) * 0.25 + 1
 
-		lmd_exact_fch_bonus = lambda x: floor(200/3300*x + 1400) / 1000
-		lmd_exact_fch_prob = lambda x: floor(200/3300*x + 50) / 1000
-		lmd_exact_fch = lambda x: (lmd_exact_fch_bonus(x) - 1) * lmd_exact_fch_prob(x) + 1
+		if version == "6.0":
+			lmd_exact_fdh_prob = lambda x: floor(550/1900*x) / 1000
+			lmd_exact_fdh = lambda x: lmd_exact_fdh_prob(x) * 0.25 + 1
 
-		lmd_exact_fdt_bonus = lambda x: floor(130/3300*x + 1000) / 1000
-		lmd_exact_fdt = lambda x: lmd_exact_fdt_bonus(x)	
+			lmd_exact_fch_bonus = lambda x: floor(200/1900*x + 1400) / 1000
+			lmd_exact_fch_prob = lambda x: floor(200/1900*x + 50) / 1000
+			lmd_exact_fch = lambda x: (lmd_exact_fch_bonus(x) - 1) * lmd_exact_fch_prob(x) + 1
 
+			lmd_exact_fdt_bonus = lambda x: floor(140/1900*x + 1000) / 1000
+			lmd_exact_fdt = lambda x: lmd_exact_fdt_bonus(x)
 
-		lmd_exact_gdcm = lambda x: floor((1000-floor(130/3300*x)) * 2500/1000)
-		lmd_exact_gdc = lambda x: floor(lmd_exact_gdcm(x)/10)/100
-		lmd_exact_fss_gdc = lambda x: 2.5 / lmd_exact_gdc(x)
-		lmd_exact_fss_dot_aa =  lambda x: floor(130/3300*x + 1000) / 1000
-		lmd_exact_fss = \
-			lambda x: self.rate_ss * lmd_exact_fss_gdc(x) \
-					+ (self.rate_aa+self.rate_dot) * lmd_exact_fss_dot_aa(x) \
-					+ 1-(self.rate_ss+self.rate_aa+self.rate_dot) * 1
+			lmd_exact_gdcm = lambda x: floor((1000-floor(130/1900*x)) * 2500/1000)
+			lmd_exact_gdc = lambda x: floor(lmd_exact_gdcm(x)/10)/100
+			lmd_exact_fss_gdc = lambda x: 2.5 / lmd_exact_gdc(x)
+			lmd_exact_fss_dot_aa =  lambda x: floor(130/1900*x + 1000) / 1000
+			lmd_exact_fss = \
+				lambda x: self.rate_ss * lmd_exact_fss_gdc(x) \
+						+ (self.rate_aa+self.rate_dot) * lmd_exact_fss_dot_aa(x) \
+						+ 1-(self.rate_ss+self.rate_aa+self.rate_dot) * 1
 
-		lmd_exact_ftn_bonus = lambda x: floor(100/3300*x + 1000) / 1000
-		lmd_exact_ftn = lambda x: lmd_exact_ftn_bonus(x)
+			lmd_exact_ftn_bonus = lambda x: floor(100/1900*x + 1000) / 1000
+			lmd_exact_ftn = lambda x: lmd_exact_ftn_bonus(x)
+
+		else:	# 5.x以前
+			lmd_exact_fdh_prob = lambda x: floor(550/3300*x) / 1000
+			lmd_exact_fdh = lambda x: lmd_exact_fdh_prob(x) * 0.25 + 1
+
+			lmd_exact_fch_bonus = lambda x: floor(200/3300*x + 1400) / 1000
+			lmd_exact_fch_prob = lambda x: floor(200/3300*x + 50) / 1000
+			lmd_exact_fch = lambda x: (lmd_exact_fch_bonus(x) - 1) * lmd_exact_fch_prob(x) + 1
+
+			lmd_exact_fdt_bonus = lambda x: floor(130/3300*x + 1000) / 1000
+			lmd_exact_fdt = lambda x: lmd_exact_fdt_bonus(x)
+
+			lmd_exact_gdcm = lambda x: floor((1000-floor(130/3300*x)) * 2500/1000)
+			lmd_exact_gdc = lambda x: floor(lmd_exact_gdcm(x)/10)/100
+			lmd_exact_fss_gdc = lambda x: 2.5 / lmd_exact_gdc(x)
+			lmd_exact_fss_dot_aa =  lambda x: floor(130/3300*x + 1000) / 1000
+			lmd_exact_fss = \
+				lambda x: self.rate_ss * lmd_exact_fss_gdc(x) \
+						+ (self.rate_aa+self.rate_dot) * lmd_exact_fss_dot_aa(x) \
+						+ 1-(self.rate_ss+self.rate_aa+self.rate_dot) * 1
+
+			lmd_exact_ftn_bonus = lambda x: floor(100/3300*x + 1000) / 1000
+			lmd_exact_ftn = lambda x: lmd_exact_ftn_bonus(x)
 
 		lmd_exact_fpi = lambda x: 1
 
@@ -410,7 +468,6 @@ class MateriaOpt:
 		print("fpi = {0:2.5f}".format(fpi_sol))
 		print()
 		return fdh_sol*fch_sol*fdt_sol*fss_sol*ftn_sol*fpi_sol
-
 
 	def kenzan(self, num_mtr_emp, equip_dh, equip_ch, equip_dt, equip_ss):
 		print("")
